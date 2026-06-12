@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spirit — Premium CBT Digitizer</title>
+  <style>
+    :root {
+      --bg: linear-gradient(135deg, #050505 0%, #111111 45%, #2b1b00 100%);
+      --panel: rgba(13, 13, 13, 0.92);
+      --glass: rgba(255, 215, 94, 0.08);
+      --border: rgba(255, 199, 76, 0.28);
+      --gold: #d6a83e;
+      --gold-strong: #ffcf4d;
+      --emerald: #22c55e;
+      --rose: #ef4444;
+      --text: #fef3c7;
+      --muted: #b89b57;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body {
+      min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 24px;
+      background: var(--bg); color: var(--text); overflow-x: hidden;
+    }
+    .app-frame {
+      width: 100%; max-width: 820px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 32px; padding: 40px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
+    }
+    h1 { text-align: center; font-size: 40px; font-weight: 900; margin-bottom: 8px; letter-spacing: 0.24em; color: var(--gold-strong); text-transform: uppercase; }
+    .tagline { text-align: center; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 1.4px; margin-bottom: 24px; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .auth-card, .upload-card, .results-card {
+      background: var(--glass); border: 1px solid var(--border); border-radius: 24px; padding: 24px;
+    }
+    .field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .field label { font-size: 14px; color: var(--muted); }
+    .field input { border: 1px solid rgba(255,199,76,0.24); border-radius: 12px; background: rgba(8,8,8,0.8); color: var(--text); padding: 12px 14px; }
+    .field input:focus { outline: 1px solid rgba(255,207,77,0.7); }
+    .switch-row { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; }
+    .switch-btn { border: 1px solid var(--border); background: transparent; color: var(--muted); padding: 8px 14px; border-radius: 999px; cursor: pointer; }
+    .switch-btn.active { background: linear-gradient(135deg, var(--gold), #8b5a12); color: #111; font-weight: 700; }
+    .auth-note { font-size: 13px; color: var(--muted); margin-top: 10px; text-align: center; }
+    .forgot-link { color: var(--gold-strong); cursor: pointer; text-decoration: underline; }
+    .welcome-banner { margin-bottom: 16px; padding: 12px 14px; border-radius: 14px; background: rgba(214,168,62,0.12); border: 1px solid rgba(214,168,62,0.3); color: var(--text); }
+    button.premium-btn {
+      width: 100%; border: none; border-radius: 14px; padding: 14px 18px; font-weight: 700; font-size: 16px;
+      color: #111; background: linear-gradient(135deg, var(--gold-strong), var(--gold)); cursor: pointer; margin-top: 10px;
+      transition: transform 0.2s ease, opacity 0.2s ease; box-shadow: 0 8px 24px rgba(214, 168, 62, 0.25);
+    }
+    button.premium-btn:hover { opacity: 0.95; transform: translateY(-1px); }
+    .secondary-btn { width: auto; margin-top: 0; padding: 10px 14px; font-size: 14px; }
+    .upload-vault { border: 2px dashed rgba(255,199,76,0.28); padding: 32px 18px; border-radius: 20px; text-align: center; cursor: pointer; background: rgba(255,199,76,0.04); transition: all 0.3s; }
+    .upload-vault:hover { border-color: var(--gold); background: rgba(255,199,76,0.08); }
+    .status-row { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 14px; margin: 16px 0 8px; }
+    #loader-wrapper { display: none; text-align: center; padding: 30px 0; }
+    .pulse-ring {
+      width: 62px; height: 62px; border-radius: 50%; border: 2px solid var(--gold); margin: 0 auto 18px;
+      animation: pulse 1.4s infinite ease-in-out; background: rgba(214,168,62,0.12);
+    }
+    @keyframes pulse { 0% { transform: scale(0.9); opacity: 0.7; } 50% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(0.9); opacity: 0.7; } }
+    .meta-metrics { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 15px; font-weight: 700; }
+    .node-option { display: block; width: 100%; text-align: left; background: rgba(255,255,255,0.04); border: 1px solid var(--border); padding: 16px 20px; margin: 12px 0; border-radius: 12px; color: var(--text); font-size: 16px; cursor: pointer; transition: all 0.25s ease; }
+    .node-option:hover:not(:disabled) { background: rgba(255,199,76,0.1); border-color: var(--gold); transform: translateX(4px); }
+    .question-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 16px; }
+    .answer-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; color: var(--muted); font-size: 13px; }
+    .report-item { padding: 16px; border: 1px solid var(--border); border-radius: 16px; margin-bottom: 12px; background: rgba(255,255,255,0.03); }
+    .report-item.correct { border-color: rgba(34,197,94,0.4); }
+    .report-item.wrong { border-color: rgba(239,68,68,0.4); }
+    .report-links { margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .report-links a { color: var(--gold-strong); text-decoration: none; font-weight: 600; }
+    .stat-ring { width: 120px; height: 120px; border-radius: 50%; border: 8px solid rgba(34,197,94,0.12); border-top-color: var(--emerald); margin: 22px auto; display: flex; justify-content: center; align-items: center; font-size: 32px; font-weight: 800; color: var(--emerald); }
+    .action-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; }
+    .micro-copy { font-size: 13px; color: var(--muted); margin-top: 10px; }
+    .inline-actions { display: flex; gap: 10px; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="app-frame">
+    <h1>SPIRIT</h1>
+    <p class="tagline">Going Paperless — Premium CBT Environment</p>
+
+    <div id="auth-panel" class="panel active">
+      <div class="auth-card">
+        <div class="switch-row">
+          <button type="button" class="switch-btn active" id="login-switch">Login</button>
+          <button type="button" class="switch-btn" id="signup-switch">Sign up</button>
+        </div>
+        <div class="status-row"><span>Secure access portal</span><span>JWT session</span></div>
+        <form id="auth-form">
+          <div class="field" id="full-name-field" style="display: none;">
+            <label for="fullName">Full Name</label>
+            <input id="fullName" name="fullName" type="text" placeholder="Enter your full name" autocomplete="name">
+          </div>
+          <div class="field" id="email-field" style="display: none;">
+            <label for="email">Email Address</label>
+            <input id="email" name="email" type="email" placeholder="Enter your email" autocomplete="email">
+          </div>
+          <div class="field">
+            <label for="username">Candidate ID</label>
+            <input id="username" name="username" type="text" placeholder="Enter username" autocomplete="username" required>
+          </div>
+          <div class="field">
+            <label for="password">Access Code</label>
+            <input id="password" name="password" type="password" placeholder="Enter password" autocomplete="current-password" required>
+          </div>
+          <div class="field" id="confirm-password-field" style="display: none;">
+            <label for="confirmPassword">Confirm Access Code</label>
+            <input id="confirmPassword" name="confirmPassword" type="password" placeholder="Re-enter password" autocomplete="new-password">
+          </div>
+          <button class="premium-btn" type="submit" id="auth-submit">Unlock Examination Console</button>
+          <p class="auth-note" id="forgot-password-link"><span class="forgot-link">Forgot password?</span></p>
+        </form>
+      </div>
+    </div>
+
+    <div id="app-panel" class="panel">
+      <div id="welcome-banner" class="welcome-banner" style="display: none;"></div>
+      <div class="action-bar">
+        <div class="micro-copy">Authenticated • Paper intake ready</div>
+        <button id="logout-btn" class="premium-btn secondary-btn">Log out</button>
+      </div>
+      <div id="deck-uploader">
+        <div class="upload-vault" id="upload-vault">
+          <p id="vault-status" style="font-size: 16px; color: #cbd5e1;">📄 Upload a PDF or paste raw text to generate the CBT</p>
+          <input type="file" id="raw-pdf" accept=".pdf" style="display: none;">
+        </div>
+        <div class="field" style="margin-top: 12px;">
+          <label for="raw-pdf-visible">Choose exam paper PDF</label>
+          <input type="file" id="raw-pdf-visible" accept=".pdf">
+        </div>
+        <div class="field" style="margin-top: 14px;">
+          <label for="raw-text">Or paste test text</label>
+          <textarea id="raw-text" rows="8" style="border: 1px solid rgba(255,199,76,0.24); border-radius: 12px; background: rgba(8,8,8,0.8); color: var(--text); padding: 12px 14px; resize: vertical;"></textarea>
+        </div>
+        <div class="inline-actions">
+          <button id="start-exam" class="premium-btn">Initialize Evaluation Engine</button>
+          <button id="paste-text-btn" class="premium-btn secondary-btn">Use Raw Text</button>
+        </div>
+      </div>
+      <div id="loader-wrapper">
+        <div class="pulse-ring"></div>
+        <p style="color: #a78bfa; font-weight: 600;">Spirit is parsing the paper and preparing the CBT flow...</p>
+      </div>
+      <div id="cbt-board" style="display: none;">
+        <div class="meta-metrics">
+          <span id="card-index" style="color: var(--gold-strong);">Question 1/1</span>
+          <span id="clock-node" style="color: var(--rose);">Time Remaining: 00:00</span>
+        </div>
+        <div class="question-card">
+          <p id="question-payload" style="font-size: 19px; font-weight: 600; line-height: 1.6; margin-bottom: 18px;"></p>
+          <div id="interactive-matrix"></div>
+        </div>
+        <div class="answer-row">
+          <span id="selection-feedback">Select the best answer.</span>
+          <span id="progress-indicator">0/0 answered</span>
+        </div>
+        <button id="next-frame" class="premium-btn" style="display: none;">Continue Examination ➔</button>
+      </div>
+      <div id="analytics-report" class="results-card" style="display: none; text-align: center; margin-top: 18px;">
+        <h2>Exam Session Evaluated</h2>
+        <div class="stat-ring" id="final-metrics">0%</div>
+        <p id="grade-label" style="font-size: 20px; font-weight: 700; margin-bottom: 24px;"></p>
+        <div id="report-card"></div>
+        <button id="reset-exam" class="premium-btn">Process New Entrance Sheet</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.mjs';
+    import * as webllm from 'https://esm.sh/@mlc-ai/webllm';
+    window.pdfjsLib = pdfjsLib;
+    window.webllm = webllm;
+  </script>
+  <script>
+    const state = {
+      token: sessionStorage.getItem('spiritToken') || '',
+      activeSuite: [],
+      activePointer: 0,
+      accuracyCounter: 0,
+      answers: [],
+      timerId: null,
+      durationRemaining: 0,
+      webllmEngine: null
+    };
+
+    const DEMO_USERS_KEY = 'spiritClientDemoUsers';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (state.token) {
+        showApp();
+      }
+
+      ensureDemoUserSeed();
+      document.getElementById('auth-form').addEventListener('submit', handleAuth);
+      document.getElementById('login-switch').addEventListener('click', () => setMode('login'));
+      document.getElementById('signup-switch').addEventListener('click', () => setMode('signup'));
+      document.getElementById('forgot-password-link').addEventListener('click', handleForgotPassword);
+      document.getElementById('upload-vault').addEventListener('click', () => document.getElementById('raw-pdf-visible').click());
+      document.getElementById('raw-pdf').addEventListener('change', (event) => trackFile(event.target));
+      document.getElementById('raw-pdf-visible').addEventListener('change', (event) => {
+        const hiddenInput = document.getElementById('raw-pdf');
+        const dataTransfer = new DataTransfer();
+        Array.from(event.target.files || []).forEach((file) => dataTransfer.items.add(file));
+        hiddenInput.files = dataTransfer.files;
+        trackFile(hiddenInput);
+      });
+      document.getElementById('start-exam').addEventListener('click', triggerExtraction);
+      document.getElementById('paste-text-btn').addEventListener('click', triggerTextUpload);
+      document.getElementById('next-frame').addEventListener('click', stepNext);
+      document.getElementById('logout-btn').addEventListener('click', logout);
+      document.getElementById('reset-exam').addEventListener('click', () => location.reload());
+    });
+
+    function setMode(mode) {
+      const isSignup = mode === 'signup';
+      document.getElementById('login-switch').classList.toggle('active', !isSignup);
+      document.getElementById('signup-switch').classList.toggle('active', isSignup);
+      document.getElementById('auth-submit').innerText = isSignup ? 'Create Account' : 'Unlock Examination Console';
+      document.getElementById('full-name-field').style.display = isSignup ? 'flex' : 'none';
+      document.getElementById('email-field').style.display = isSignup ? 'flex' : 'none';
+      document.getElementById('confirm-password-field').style.display = isSignup ? 'flex' : 'none';
+      document.getElementById('forgot-password-link').style.display = isSignup ? 'none' : 'block';
+    }
+
+    function showApp() {
+      document.getElementById('auth-panel').classList.remove('active');
+      document.getElementById('app-panel').classList.add('active');
+    }
+
+    function logout() {
+      state.token = '';
+      sessionStorage.removeItem('spiritToken');
+      document.getElementById('app-panel').classList.remove('active');
+      document.getElementById('auth-panel').classList.add('active');
+      document.getElementById('auth-form').reset();
+      document.getElementById('deck-uploader').style.display = 'block';
+      document.getElementById('cbt-board').style.display = 'none';
+      document.getElementById('analytics-report').style.display = 'none';
+      document.getElementById('loader-wrapper').style.display = 'none';
+      document.getElementById('interactive-matrix').innerHTML = '';
+    }
+
+    function trackFile(node) {
+      if (node.files.length > 0) {
+        document.getElementById('vault-status').innerText = `✅ Target Hooked: ${node.files[0].name}`;
+      }
+    }
+
+    function readDemoUsers() {
+      try {
+        return JSON.parse(localStorage.getItem(DEMO_USERS_KEY) || '{}');
+      } catch {
+        return {};
+      }
+    }
+
+    function saveDemoUsers(users) {
+      localStorage.setItem(DEMO_USERS_KEY, JSON.stringify(users));
+    }
+
+    function ensureDemoUserSeed() {
+      const users = readDemoUsers();
+      if (!users.spirit) {
+        users.spirit = {
+          username: 'spirit',
+          password: 'paperless',
+          fullName: 'Spirit Demo User',
+          email: 'demo@spirit.app'
+        };
+        saveDemoUsers(users);
+      }
+      return users;
+    }
+
+    function handleAuth(event) {
+      event.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const fullName = document.getElementById('fullName').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      const mode = document.getElementById('signup-switch').classList.contains('active') ? 'signup' : 'login';
+      const users = ensureDemoUserSeed();
+
+      if (mode === 'signup') {
+        if (!username || !password || !fullName || !email) {
+          return alert('Please fill in your username, full name, email, and password.');
+        }
+        if (password.length < 6) {
+          return alert('Password must be at least 6 characters long.');
+        }
+        if (password !== confirmPassword) {
+          return alert('Passwords do not match.');
+        }
+        if (users[username]) {
+          return alert('That username is already registered locally on this device.');
+        }
+        users[username] = { username, password, fullName, email };
+        saveDemoUsers(users);
+        document.getElementById('welcome-banner').innerHTML = `Welcome aboard, ${fullName}! Your account is ready.`;
+        document.getElementById('welcome-banner').style.display = 'block';
+      } else {
+        const storedUser = users[username];
+        if (!storedUser || storedUser.password !== password) {
+          return alert('Invalid credentials.');
+        }
+      }
+
+      const sessionToken = `client:${username}:${Date.now()}`;
+      state.token = sessionToken;
+      sessionStorage.setItem('spiritToken', sessionToken);
+      showApp();
+    }
+
+    function handleForgotPassword() {
+      const username = document.getElementById('username').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const users = ensureDemoUserSeed();
+
+      if (!username || !email) {
+        return alert('Please enter your username and email to reset your password.');
+      }
+
+      const storedUser = users[username];
+      if (!storedUser || storedUser.email !== email) {
+        return alert('We could not find a matching local account.');
+      }
+
+      const tempPassword = `Spirit${Math.floor(1000 + Math.random() * 9000)}`;
+      storedUser.password = tempPassword;
+      saveDemoUsers(users);
+      alert(`A temporary password has been generated: ${tempPassword}`);
+    }
+
+    function normalizeQuizPayload(payload) {
+      if (!payload) return [];
+      if (Array.isArray(payload)) return payload;
+      if (typeof payload === 'string') {
+        const start = payload.indexOf('[');
+        const end = payload.lastIndexOf(']');
+        if (start >= 0 && end > start) {
+          const jsonSlice = payload.slice(start, end + 1);
+          try {
+            const parsed = JSON.parse(jsonSlice);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        }
+      }
+      return [];
+    }
+
+    function extractFallbackQuiz(rawText) {
+      const lines = rawText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const quiz = [];
+      let currentQuestion = null;
+      let currentOptions = [];
+      let currentKeywords = [];
+
+      const pushCurrent = () => {
+        if (currentQuestion && currentOptions.length >= 2) {
+          const normalizedOptions = currentOptions.slice(0, 4).map((entry) => entry.trim());
+          const correctAnswer = normalizedOptions[0] || '';
+          quiz.push({
+            id: `q-${quiz.length + 1}`,
+            question: currentQuestion,
+            options: normalizedOptions,
+            correctAnswer,
+            topicKeywords: currentKeywords.length > 0 ? currentKeywords : [currentQuestion.split(' ').slice(0, 3).join(' ')]
+          });
+        }
+        currentQuestion = null;
+        currentOptions = [];
+        currentKeywords = [];
+      };
+
+      for (const line of lines) {
+        const questionMatch = line.match(/^(?:Question\s*\d*[:.)-]?|Q\d*[:.)-]?|\d+[.)]\s*)(.+\?)$/i);
+        if (questionMatch) {
+          pushCurrent();
+          currentQuestion = questionMatch[1].trim();
+          currentKeywords = currentQuestion.split(/\s+/).filter(Boolean).slice(0, 4);
+          continue;
+        }
+
+        const optionMatch = line.match(/^(?:\(?([A-Da-d])\)?[.):-]|(?:[1-4])[.):-])\s*(.+)$/);
+        if (optionMatch && currentQuestion) {
+          currentOptions.push(optionMatch[2].trim());
+        }
+      }
+
+      pushCurrent();
+      return quiz.slice(0, 8);
+    }
+
+    function extractTopicKeywords(questionText, options = []) {
+      const combined = [questionText, ...options].join(' ');
+      const words = combined
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter((word) => word.length > 3 && !['what', 'which', 'when', 'where', 'there', 'from', 'their', 'about', 'with', 'that', 'this', 'them', 'into', 'were', 'your', 'have', 'than', 'will', 'should'].includes(word));
+
+      const unique = [...new Set(words)].slice(0, 4);
+      return unique.length > 0 ? unique : [questionText.split(' ').slice(0, 3).join(' ')];
+    }
+
+    function enrichQuizItems(quiz) {
+      return quiz.map((entry, index) => {
+        const options = Array.isArray(entry.options) ? entry.options.slice(0, 4) : [];
+        const correctAnswer = entry.correctAnswer || options[0] || '';
+        return {
+          id: entry.id || `q-${index + 1}`,
+          question: entry.question || 'Question unavailable',
+          options,
+          correctAnswer,
+          topicKeywords: Array.isArray(entry.topicKeywords) && entry.topicKeywords.length > 0
+            ? entry.topicKeywords.slice(0, 4)
+            : extractTopicKeywords(entry.question || '', options)
+        };
+      });
+    }
+
+    function buildQuizFromText(rawText) {
+      const quiz = extractFallbackQuiz(rawText || '');
+      return enrichQuizItems(quiz);
+    }
+
+    async function ensureWebLlmEngine() {
+      if (state.webllmEngine) {
+        return state.webllmEngine;
+      }
+
+      const webllmModule = window.webllm;
+      if (!webllmModule?.CreateMLCEngine) {
+        throw new Error('WebLLM is not available in this browser.');
+      }
+
+      const modelId = 'Llama-3.2-1B-Instruct-q4f16_1-MLC';
+      state.webllmEngine = await webllmModule.CreateMLCEngine(modelId, {
+        initProgressCallback: (progress) => {
+          console.info('[WebLLM]', progress?.text || progress);
+        }
+      });
+      return state.webllmEngine;
+    }
+
+    async function generateQuizWithWebLlm(rawText) {
+      const engine = await ensureWebLlmEngine();
+      const prompt = `Convert the following exam text into a compact JSON array of objects with the shape [{"id":"q-1","question":"...","options":["A","B","C","D"],"correctAnswer":"...","topicKeywords":["keyword1","keyword2"]}]. Return only valid JSON.\n\n${rawText.substring(0, 10000)}`;
+      const response = await engine.chat.completions.create({
+        messages: [
+          { role: 'system', content: 'You are a strict exam parser.' },
+          { role: 'user', content: prompt }
+        ]
+      });
+
+      const content = response?.choices?.[0]?.message?.content || response?.text || '';
+      const normalized = normalizeQuizPayload(content);
+      if (normalized.length > 0) {
+        return enrichQuizItems(normalized);
+      }
+      throw new Error('The browser model did not return a usable quiz.');
+    }
+
+    async function parseTextIntoQuiz(rawText) {
+      if (!rawText || !rawText.trim()) return [];
+      try {
+        const quiz = await generateQuizWithWebLlm(rawText);
+        if (quiz.length > 0) {
+          return quiz;
+        }
+      } catch (error) {
+        console.warn('WebLLM parsing failed, using built-in fallback parser.', error);
+      }
+      return buildQuizFromText(rawText);
+    }
+
+    async function extractTextFromPdf(file) {
+      const pdfjsLib = window.pdfjsLib;
+      if (!pdfjsLib) {
+        throw new Error('PDF.js failed to load.');
+      }
+
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.worker.min.js';
+      const loadingTask = pdfjsLib.getDocument({ data: await file.arrayBuffer() });
+      const pdf = await loadingTask.promise;
+      let text = '';
+
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        const page = await pdf.getPage(pageNumber);
+        const content = await page.getTextContent();
+        text += content.items.map((item) => item.str).join(' ') + '\n';
+      }
+
+      return text;
+    }
+
+    async function triggerTextUpload() {
+      const rawText = document.getElementById('raw-text').value.trim();
+      if (!rawText) {
+        return alert('Please paste some test text first.');
+      }
+
+      document.getElementById('deck-uploader').style.display = 'none';
+      document.getElementById('loader-wrapper').style.display = 'block';
+      document.getElementById('cbt-board').style.display = 'none';
+      document.getElementById('analytics-report').style.display = 'none';
+
+      try {
+        const quiz = await parseTextIntoQuiz(rawText);
+        if (quiz.length > 0) {
+          startCbtSession(quiz);
+        } else {
+          alert('The parser did not return a quiz. Please try another text sample.');
+          location.reload();
+        }
+      } catch (error) {
+        console.error(error);
+        alert('The text parser could not finish processing the document.');
+        location.reload();
+      }
+    }
+
+    async function triggerExtraction() {
+      const fileCore = document.getElementById('raw-pdf');
+      if (fileCore.files.length === 0) {
+        return alert('Please supply a functional PDF document first.');
+      }
+
+      document.getElementById('deck-uploader').style.display = 'none';
+      document.getElementById('loader-wrapper').style.display = 'block';
+      document.getElementById('cbt-board').style.display = 'none';
+      document.getElementById('analytics-report').style.display = 'none';
+
+      try {
+        const rawText = await extractTextFromPdf(fileCore.files[0]);
+        const quiz = await parseTextIntoQuiz(rawText);
+        if (quiz.length > 0) {
+          startCbtSession(quiz);
+        } else {
+          alert('The parser did not return a quiz. Please try another PDF.');
+          location.reload();
+        }
+      } catch (error) {
+        console.error(error);
+        alert('The Spirit engine could not finish processing the document.');
+        location.reload();
+      }
+    }
+
+    function startCbtSession(quiz) {
+      state.activeSuite = quiz;
+      state.activePointer = 0;
+      state.accuracyCounter = 0;
+      state.answers = [];
+      state.durationRemaining = state.activeSuite.length * 60;
+      document.getElementById('loader-wrapper').style.display = 'none';
+      document.getElementById('cbt-board').style.display = 'block';
+      startClockEngine();
+      buildFrame();
+    }
+
+    function startClockEngine() {
+      if (state.timerId) clearInterval(state.timerId);
+      state.timerId = setInterval(() => {
+        state.durationRemaining -= 1;
+        const min = String(Math.floor(state.durationRemaining / 60)).padStart(2, '0');
+        const sec = String(state.durationRemaining % 60).padStart(2, '0');
+        document.getElementById('clock-node').innerText = `Time Remaining: ${min}:${sec}`;
+        if (state.durationRemaining <= 0) terminateExam();
+      }, 1000);
+    }
+
+    function buildFrame() {
+      const unit = state.activeSuite[state.activePointer];
+      if (!unit) {
+        terminateExam();
+        return;
+      }
+
+      document.getElementById('card-index').innerText = `Question ${state.activePointer + 1} of ${state.activeSuite.length}`;
+      document.getElementById('question-payload').innerText = unit.question || 'Question unavailable';
+      const lane = document.getElementById('interactive-matrix');
+      lane.innerHTML = '';
+      const options = Array.isArray(unit.options) ? unit.options : [];
+      options.forEach((item) => {
+        const optionNode = document.createElement('button');
+        optionNode.className = 'node-option';
+        optionNode.innerText = item;
+        optionNode.onclick = () => evaluationInterception(optionNode, item, unit);
+        lane.appendChild(optionNode);
+      });
+      const answered = state.answers.find((entry) => entry.id === unit.id);
+      if (answered) {
+        const matchedOption = Array.from(lane.children).find((child) => child.innerText === answered.choice);
+        if (matchedOption) {
+          matchedOption.click();
+        }
+      }
+      document.getElementById('next-frame').style.display = 'none';
+      document.getElementById('selection-feedback').innerText = 'Select the best answer.';
+      document.getElementById('progress-indicator').innerText = `${state.answers.length}/${state.activeSuite.length} answered`;
+    }
+
+    function evaluationInterception(targetNode, stringChosen, unit) {
+      const elements = document.getElementsByClassName('node-option');
+      for (const item of elements) item.disabled = true;
+
+      const normalizedChoice = (stringChosen || '').trim();
+      const normalizedAnswer = (unit.correctAnswer || '').trim();
+      const isCorrect = normalizedChoice.toLowerCase() === normalizedAnswer.toLowerCase();
+
+      if (isCorrect) {
+        targetNode.style.background = 'rgba(16, 185, 129, 0.16)';
+        targetNode.style.borderColor = '#10b981';
+      } else {
+        targetNode.style.background = 'rgba(244, 63, 94, 0.16)';
+        targetNode.style.borderColor = '#f43f5e';
+        for (const item of elements) {
+          if (item.innerText.trim().toLowerCase() === normalizedAnswer.toLowerCase()) {
+            item.style.background = 'rgba(16, 185, 129, 0.16)';
+            item.style.borderColor = '#10b981';
+          }
+        }
+      }
+
+      const existingIndex = state.answers.findIndex((entry) => entry.id === unit.id);
+      const answerEntry = { id: unit.id, choice: normalizedChoice, correctAnswer: normalizedAnswer, isCorrect };
+      if (existingIndex >= 0) {
+        state.answers[existingIndex] = answerEntry;
+      } else {
+        state.answers.push(answerEntry);
+      }
+
+      state.accuracyCounter = state.answers.filter((entry) => entry.isCorrect).length;
+      document.getElementById('selection-feedback').innerText = isCorrect ? 'Correct answer selected.' : 'That answer was not correct.';
+      document.getElementById('progress-indicator').innerText = `${state.answers.length}/${state.activeSuite.length} answered`;
+      document.getElementById('next-frame').style.display = 'block';
+    }
+
+    function stepNext() {
+      state.activePointer += 1;
+      if (state.activePointer < state.activeSuite.length) {
+        buildFrame();
+      } else {
+        terminateExam();
+      }
+    }
+
+    function terminateExam() {
+      if (state.timerId) clearInterval(state.timerId);
+      document.getElementById('cbt-board').style.display = 'none';
+      document.getElementById('analytics-report').style.display = 'block';
+      const computedRatio = Math.round((state.accuracyCounter / Math.max(state.activeSuite.length, 1)) * 100);
+      document.getElementById('final-metrics').innerText = `${computedRatio}%`;
+      let badgeText = 'Excellent focus achieved. Brilliant execution.';
+      if (computedRatio < 40) badgeText = 'Nice baseline. Keep reinforcing the key structures.';
+      else if (computedRatio < 75) badgeText = 'Strong progress. Your exam logic is improving.';
+      document.getElementById('grade-label').innerText = badgeText;
+
+      const reportCard = document.getElementById('report-card');
+      reportCard.innerHTML = '';
+      state.activeSuite.forEach((question, index) => {
+        const answerEntry = state.answers.find((entry) => entry.id === question.id);
+        const correct = answerEntry?.isCorrect || false;
+        const detail = document.createElement('div');
+        detail.className = `report-item ${correct ? 'correct' : 'wrong'}`;
+        const selectedText = answerEntry?.choice || 'Not answered';
+        const correctText = question.correctAnswer || 'Not available';
+        const keywords = Array.isArray(question.topicKeywords) ? question.topicKeywords : [];
+        const searchLinks = !correct && keywords.length > 0 ? keywords.slice(0, 2).map((keyword) => {
+          const encoded = encodeURIComponent(keyword);
+          return `<a href="https://www.youtube.com/results?search_query=${encoded}" target="_blank" rel="noreferrer">YouTube</a><a href="https://www.google.com/search?q=${encoded}" target="_blank" rel="noreferrer">Google</a>`;
+        }).join('') : '';
+        detail.innerHTML = `
+          <strong>${index + 1}. ${question.question}</strong>
+          <div style="margin-top: 8px; color: #fef3c7;">Your answer: ${selectedText}</div>
+          <div style="margin-top: 4px; color: ${correct ? '#22c55e' : '#ef4444'};">Correct answer: ${correctText}</div>
+          ${searchLinks ? `<div class="report-links">${searchLinks}</div>` : ''}
+        `;
+        reportCard.appendChild(detail);
+      });
+    }
+  </script>
+</body>
+</html>
