@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spirit — Premium CBT Digitizer</title>
-  <script src="https://cloudflare.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
   <script>
-    if (window.pdfjsLib) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cloudflare.com';
+    if (window.pdfjsLib?.GlobalWorkerOptions) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
     }
   </script>
   <style>
@@ -172,10 +172,6 @@
     </div>
   </div>
 
-  <script type="module">
-    import * as webllm from 'https://esm.run';
-    window.webllm = webllm;
-  </script>
   <script>
     const state = {
       token: sessionStorage.getItem('spiritToken') || '',
@@ -435,54 +431,10 @@
       return enrichQuizItems(quiz);
     }
 
-    async function ensureWebLlmEngine() {
-      if (state.webllmEngine) {
-        return state.webllmEngine;
-      }
-
-      const webllmModule = window.webllm;
-      if (!webllmModule?.CreateMLCEngine) {
-        throw new Error('WebLLM is not available in this browser.');
-      }
-
-      const modelId = 'Llama-3.2-1B-Instruct-q4f16_1-MLC';
-      state.webllmEngine = await webllmModule.CreateMLCEngine(modelId, {
-        initProgressCallback: (progress) => {
-          console.info('[WebLLM]', progress?.text || progress);
-        }
-      });
-      return state.webllmEngine;
-    }
-
-    async function generateQuizWithWebLlm(rawText) {
-      const engine = await ensureWebLlmEngine();
-      const prompt = `Convert the following exam text into a compact JSON array of objects with the shape [{"id":"q-1","question":"...","options":["A","B","C","D"],"correctAnswer":"...","topicKeywords":["keyword1","keyword2"]}]. Return only valid JSON.\n\n${rawText.substring(0, 10000)}`;
-      const response = await engine.chat.completions.create({
-        messages: [
-          { role: 'system', content: 'You are a strict exam parser. Return only raw valid JSON array.' },
-          { role: 'user', content: prompt }
-        ]
-      });
-
-      const content = response?.choices?.[0]?.message?.content || response?.text || '';
-      const normalized = normalizeQuizPayload(content);
-      if (normalized.length > 0) {
-        return enrichQuizItems(normalized);
-      }
-      throw new Error('The browser model did not return a usable quiz.');
-    }
-
     async function parseTextIntoQuiz(rawText) {
       if (!rawText || !rawText.trim()) return [];
-      try {
-        const quiz = await generateQuizWithWebLlm(rawText);
-        if (quiz.length > 0) {
-          return quiz;
-        }
-      } catch (error) {
-        console.warn('WebLLM parsing failed, using built-in fallback parser.', error);
-      }
-      return buildQuizFromText(rawText);
+      const quiz = buildQuizFromText(rawText);
+      return quiz.length > 0 ? quiz : [];
     }
 
     async function handlePdfUpload(event) {
