@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spirit — Premium CBT Digitizer</title>
+  <script src="https://cloudflare.com"></script>
+  <script>
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cloudflare.com';
+    }
+  </script>
   <style>
     :root {
       --bg: linear-gradient(135deg, #050505 0%, #111111 45%, #2b1b00 100%);
@@ -23,7 +29,7 @@
       background: var(--bg); color: var(--text); overflow-x: hidden;
     }
     .app-frame {
-      width: 100%; max-width: 820px; background: var(--panel); border: 1px solid var(--border);
+      width: 100%; max-width: 900px; background: var(--panel); border: 1px solid var(--border);
       border-radius: 32px; padding: 40px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
       backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
     }
@@ -31,13 +37,11 @@
     .tagline { text-align: center; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 1.4px; margin-bottom: 24px; }
     .panel { display: none; }
     .panel.active { display: block; }
-    .auth-card, .upload-card, .results-card {
-      background: var(--glass); border: 1px solid var(--border); border-radius: 24px; padding: 24px;
-    }
+    .auth-card, .results-card { background: var(--glass); border: 1px solid var(--border); border-radius: 24px; padding: 24px; }
     .field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
     .field label { font-size: 14px; color: var(--muted); }
-    .field input { border: 1px solid rgba(255,199,76,0.24); border-radius: 12px; background: rgba(8,8,8,0.8); color: var(--text); padding: 12px 14px; }
-    .field input:focus { outline: 1px solid rgba(255,207,77,0.7); }
+    .field input, .field textarea { border: 1px solid rgba(255,199,76,0.24); border-radius: 12px; background: rgba(8,8,8,0.8); color: var(--text); padding: 12px 14px; }
+    .field input:focus, .field textarea:focus { outline: 1px solid rgba(255,207,77,0.7); }
     .switch-row { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; }
     .switch-btn { border: 1px solid var(--border); background: transparent; color: var(--muted); padding: 8px 14px; border-radius: 999px; cursor: pointer; }
     .switch-btn.active { background: linear-gradient(135deg, var(--gold), #8b5a12); color: #111; font-weight: 700; }
@@ -51,8 +55,7 @@
     }
     button.premium-btn:hover { opacity: 0.95; transform: translateY(-1px); }
     .secondary-btn { width: auto; margin-top: 0; padding: 10px 14px; font-size: 14px; }
-    .upload-vault { border: 2px dashed rgba(255,199,76,0.28); padding: 32px 18px; border-radius: 20px; text-align: center; cursor: pointer; background: rgba(255,199,76,0.04); transition: all 0.3s; }
-    .upload-vault:hover { border-color: var(--gold); background: rgba(255,199,76,0.08); }
+    .upload-card { background: rgba(255,199,76,0.05); border: 1px solid var(--border); border-radius: 24px; padding: 24px; }
     .status-row { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 14px; margin: 16px 0 8px; }
     #loader-wrapper { display: none; text-align: center; padding: 30px 0; }
     .pulse-ring {
@@ -74,6 +77,7 @@
     .action-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; }
     .micro-copy { font-size: 13px; color: var(--muted); margin-top: 10px; }
     .inline-actions { display: flex; gap: 10px; margin-top: 16px; }
+    .helper-text { font-size: 13px; color: var(--muted); margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -87,7 +91,7 @@
           <button type="button" class="switch-btn active" id="login-switch">Login</button>
           <button type="button" class="switch-btn" id="signup-switch">Sign up</button>
         </div>
-        <div class="status-row"><span>Secure access portal</span><span>JWT session</span></div>
+        <div class="status-row"><span>Secure access portal</span><span>Local browser session</span></div>
         <form id="auth-form">
           <div class="field" id="full-name-field" style="display: none;">
             <label for="fullName">Full Name</label>
@@ -121,28 +125,27 @@
         <div class="micro-copy">Authenticated • Paper intake ready</div>
         <button id="logout-btn" class="premium-btn secondary-btn">Log out</button>
       </div>
-      <div id="deck-uploader">
-        <div class="upload-vault" id="upload-vault">
-          <p id="vault-status" style="font-size: 16px; color: #cbd5e1;">📄 Upload a PDF or paste raw text to generate the CBT</p>
-          <input type="file" id="raw-pdf" accept=".pdf" style="display: none;">
+
+      <div class="upload-card">
+        <div class="field">
+          <label for="pdf-file-input">Upload a PDF paper</label>
+          <input id="pdf-file-input" type="file" accept=".pdf" />
+          <p class="helper-text">The chosen PDF will be parsed locally in your browser and inserted into the text box below.</p>
         </div>
-        <div class="field" style="margin-top: 12px;">
-          <label for="raw-pdf-visible">Choose exam paper PDF</label>
-          <input type="file" id="raw-pdf-visible" accept=".pdf">
-        </div>
-        <div class="field" style="margin-top: 14px;">
-          <label for="raw-text">Or paste test text</label>
-          <textarea id="raw-text" rows="8" style="border: 1px solid rgba(255,199,76,0.24); border-radius: 12px; background: rgba(8,8,8,0.8); color: var(--text); padding: 12px 14px; resize: vertical;"></textarea>
+        <div class="field">
+          <label for="paper-input-box">Raw paper text</label>
+          <textarea id="paper-input-box" rows="10" placeholder="The extracted PDF text will appear here, or paste content manually."></textarea>
         </div>
         <div class="inline-actions">
           <button id="start-exam" class="premium-btn">Initialize Evaluation Engine</button>
-          <button id="paste-text-btn" class="premium-btn secondary-btn">Use Raw Text</button>
         </div>
       </div>
+
       <div id="loader-wrapper">
         <div class="pulse-ring"></div>
         <p style="color: #a78bfa; font-weight: 600;">Spirit is parsing the paper and preparing the CBT flow...</p>
       </div>
+
       <div id="cbt-board" style="display: none;">
         <div class="meta-metrics">
           <span id="card-index" style="color: var(--gold-strong);">Question 1/1</span>
@@ -158,6 +161,7 @@
         </div>
         <button id="next-frame" class="premium-btn" style="display: none;">Continue Examination ➔</button>
       </div>
+
       <div id="analytics-report" class="results-card" style="display: none; text-align: center; margin-top: 18px;">
         <h2>Exam Session Evaluated</h2>
         <div class="stat-ring" id="final-metrics">0%</div>
@@ -168,25 +172,9 @@
     </div>
   </div>
 
-  <script>
-    window.spiritModuleState = { pdfjsLoaded: false, webllmLoaded: false };
-    (async function loadOptionalClientModules() {
-      try {
-        const pdfModule = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.mjs');
-        window.pdfjsLib = pdfModule;
-        window.spiritModuleState.pdfjsLoaded = true;
-      } catch (error) {
-        console.warn('PDF.js could not be loaded from CDN.', error);
-      }
-
-      try {
-        const webllmModule = await import('https://esm.sh/@mlc-ai/webllm');
-        window.webllm = webllmModule;
-        window.spiritModuleState.webllmLoaded = true;
-      } catch (error) {
-        console.warn('WebLLM could not be loaded from CDN.', error);
-      }
-    })();
+  <script type="module">
+    import * as webllm from 'https://esm.run';
+    window.webllm = webllm;
   </script>
   <script>
     const state = {
@@ -200,11 +188,12 @@
       webllmEngine: null
     };
 
-    const USER_STORE_KEY = 'spiritClientDemoUsers';
+    const USER_STORE_KEY = 'spiritClientUsers';
     const CURRENT_USER_KEY = 'spiritCurrentUser';
 
     document.addEventListener('DOMContentLoaded', () => {
-      if (state.token) {
+      const storedUser = readCurrentUser();
+      if (state.token || storedUser) {
         showApp();
       }
 
@@ -213,17 +202,8 @@
       document.getElementById('login-switch').addEventListener('click', () => setMode('login'));
       document.getElementById('signup-switch').addEventListener('click', () => setMode('signup'));
       document.getElementById('forgot-password-link').addEventListener('click', handleForgotPassword);
-      document.getElementById('upload-vault').addEventListener('click', () => document.getElementById('raw-pdf-visible').click());
-      document.getElementById('raw-pdf').addEventListener('change', (event) => trackFile(event.target));
-      document.getElementById('raw-pdf-visible').addEventListener('change', (event) => {
-        const hiddenInput = document.getElementById('raw-pdf');
-        const dataTransfer = new DataTransfer();
-        Array.from(event.target.files || []).forEach((file) => dataTransfer.items.add(file));
-        hiddenInput.files = dataTransfer.files;
-        trackFile(hiddenInput);
-      });
+      document.getElementById('pdf-file-input').addEventListener('change', handlePdfUpload);
       document.getElementById('start-exam').addEventListener('click', triggerExtraction);
-      document.getElementById('paste-text-btn').addEventListener('click', triggerTextUpload);
       document.getElementById('next-frame').addEventListener('click', stepNext);
       document.getElementById('logout-btn').addEventListener('click', logout);
       document.getElementById('reset-exam').addEventListener('click', () => location.reload());
@@ -248,19 +228,21 @@
     function logout() {
       state.token = '';
       sessionStorage.removeItem('spiritToken');
+      localStorage.removeItem(CURRENT_USER_KEY);
       document.getElementById('app-panel').classList.remove('active');
       document.getElementById('auth-panel').classList.add('active');
       document.getElementById('auth-form').reset();
-      document.getElementById('deck-uploader').style.display = 'block';
       document.getElementById('cbt-board').style.display = 'none';
       document.getElementById('analytics-report').style.display = 'none';
       document.getElementById('loader-wrapper').style.display = 'none';
       document.getElementById('interactive-matrix').innerHTML = '';
     }
 
-    function trackFile(node) {
-      if (node.files.length > 0) {
-        document.getElementById('vault-status').innerText = `✅ Target Hooked: ${node.files[0].name}`;
+    function readCurrentUser() {
+      try {
+        return JSON.parse(localStorage.getItem(CURRENT_USER_KEY) || 'null');
+      } catch {
+        return null;
       }
     }
 
@@ -477,7 +459,7 @@
       const prompt = `Convert the following exam text into a compact JSON array of objects with the shape [{"id":"q-1","question":"...","options":["A","B","C","D"],"correctAnswer":"...","topicKeywords":["keyword1","keyword2"]}]. Return only valid JSON.\n\n${rawText.substring(0, 10000)}`;
       const response = await engine.chat.completions.create({
         messages: [
-          { role: 'system', content: 'You are a strict exam parser.' },
+          { role: 'system', content: 'You are a strict exam parser. Return only raw valid JSON array.' },
           { role: 'user', content: prompt }
         ]
       });
@@ -503,75 +485,55 @@
       return buildQuizFromText(rawText);
     }
 
-    async function extractTextFromPdf(file) {
-      const pdfjsLib = window.pdfjsLib;
-      if (!pdfjsLib) {
-        throw new Error('PDF.js failed to load.');
-      }
+    async function handlePdfUpload(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
 
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.worker.min.js';
-      const loadingTask = pdfjsLib.getDocument({ data: await file.arrayBuffer() });
-      const pdf = await loadingTask.promise;
-      let text = '';
-
-      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-        const page = await pdf.getPage(pageNumber);
-        const content = await page.getTextContent();
-        text += content.items.map((item) => item.str).join(' ') + '\n';
-      }
-
-      return text;
-    }
-
-    async function triggerTextUpload() {
-      const rawText = document.getElementById('raw-text').value.trim();
-      if (!rawText) {
-        return alert('Please paste some test text first.');
-      }
-
-      document.getElementById('deck-uploader').style.display = 'none';
-      document.getElementById('loader-wrapper').style.display = 'block';
-      document.getElementById('cbt-board').style.display = 'none';
-      document.getElementById('analytics-report').style.display = 'none';
+      const textBox = document.getElementById('paper-input-box');
+      textBox.value = 'Extracting text from PDF...';
 
       try {
-        const quiz = await parseTextIntoQuiz(rawText);
-        if (quiz.length > 0) {
-          startCbtSession(quiz);
-        } else {
-          alert('The parser did not return a quiz. Please try another text sample.');
-          location.reload();
+        const fileBuffer = await file.arrayBuffer();
+        const pdfjsLib = window.pdfjsLib;
+        if (!pdfjsLib?.getDocument) {
+          throw new Error('PDF.js did not load.');
         }
+
+        const pdf = await pdfjsLib.getDocument({ data: fileBuffer }).promise;
+        let extractedText = '';
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+          const page = await pdf.getPage(pageNumber);
+          const content = await page.getTextContent();
+          extractedText += content.items.map((item) => item.str).join(' ') + '\n';
+        }
+        textBox.value = extractedText.trim();
       } catch (error) {
         console.error(error);
-        alert('The text parser could not finish processing the document.');
-        location.reload();
+        textBox.value = 'Unable to extract text from the selected PDF.';
       }
     }
 
     async function triggerExtraction() {
-      const fileCore = document.getElementById('raw-pdf');
-      if (fileCore.files.length === 0) {
-        return alert('Please supply a functional PDF document first.');
+      const rawText = document.getElementById('paper-input-box').value.trim();
+      if (!rawText) {
+        return alert('Please upload a PDF or paste text before initializing the evaluation engine.');
       }
 
-      document.getElementById('deck-uploader').style.display = 'none';
       document.getElementById('loader-wrapper').style.display = 'block';
       document.getElementById('cbt-board').style.display = 'none';
       document.getElementById('analytics-report').style.display = 'none';
 
       try {
-        const rawText = await extractTextFromPdf(fileCore.files[0]);
         const quiz = await parseTextIntoQuiz(rawText);
         if (quiz.length > 0) {
           startCbtSession(quiz);
         } else {
-          alert('The parser did not return a quiz. Please try another PDF.');
+          alert('The browser engine did not produce a usable quiz.');
           location.reload();
         }
       } catch (error) {
         console.error(error);
-        alert('The Spirit engine could not finish processing the document.');
+        alert('The browser evaluation engine could not finish processing the document.');
         location.reload();
       }
     }
@@ -618,13 +580,6 @@
         optionNode.onclick = () => evaluationInterception(optionNode, item, unit);
         lane.appendChild(optionNode);
       });
-      const answered = state.answers.find((entry) => entry.id === unit.id);
-      if (answered) {
-        const matchedOption = Array.from(lane.children).find((child) => child.innerText === answered.choice);
-        if (matchedOption) {
-          matchedOption.click();
-        }
-      }
       document.getElementById('next-frame').style.display = 'none';
       document.getElementById('selection-feedback').innerText = 'Select the best answer.';
       document.getElementById('progress-indicator').innerText = `${state.answers.length}/${state.activeSuite.length} answered`;
@@ -696,15 +651,17 @@
         const selectedText = answerEntry?.choice || 'Not answered';
         const correctText = question.correctAnswer || 'Not available';
         const keywords = Array.isArray(question.topicKeywords) ? question.topicKeywords : [];
-        const searchLinks = !correct && keywords.length > 0 ? keywords.slice(0, 2).map((keyword) => {
+        const links = !correct && keywords.length > 0 ? keywords.slice(0, 2).map((keyword) => {
           const encoded = encodeURIComponent(keyword);
-          return `<a href="https://www.youtube.com/results?search_query=${encoded}" target="_blank" rel="noreferrer">YouTube</a><a href="https://www.google.com/search?q=${encoded}" target="_blank" rel="noreferrer">Google</a>`;
+          const youtubeUrl = `https://youtube.com/${encoded}+tutorial`;
+          const googleUrl = `https://google.com/${encoded}+explanation`;
+          return `<a href="${youtubeUrl}" target="_blank" rel="noreferrer">YouTube</a><a href="${googleUrl}" target="_blank" rel="noreferrer">Google</a>`;
         }).join('') : '';
         detail.innerHTML = `
           <strong>${index + 1}. ${question.question}</strong>
           <div style="margin-top: 8px; color: #fef3c7;">Your answer: ${selectedText}</div>
           <div style="margin-top: 4px; color: ${correct ? '#22c55e' : '#ef4444'};">Correct answer: ${correctText}</div>
-          ${searchLinks ? `<div class="report-links">${searchLinks}</div>` : ''}
+          ${links ? `<div class="report-links">${links}</div>` : ''}
         `;
         reportCard.appendChild(detail);
       });
