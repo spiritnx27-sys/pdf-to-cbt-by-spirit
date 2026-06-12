@@ -168,11 +168,25 @@
     </div>
   </div>
 
-  <script type="module">
-    import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.mjs';
-    import * as webllm from 'https://esm.sh/@mlc-ai/webllm';
-    window.pdfjsLib = pdfjsLib;
-    window.webllm = webllm;
+  <script>
+    window.spiritModuleState = { pdfjsLoaded: false, webllmLoaded: false };
+    (async function loadOptionalClientModules() {
+      try {
+        const pdfModule = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.mjs');
+        window.pdfjsLib = pdfModule;
+        window.spiritModuleState.pdfjsLoaded = true;
+      } catch (error) {
+        console.warn('PDF.js could not be loaded from CDN.', error);
+      }
+
+      try {
+        const webllmModule = await import('https://esm.sh/@mlc-ai/webllm');
+        window.webllm = webllmModule;
+        window.spiritModuleState.webllmLoaded = true;
+      } catch (error) {
+        console.warn('WebLLM could not be loaded from CDN.', error);
+      }
+    })();
   </script>
   <script>
     const state = {
@@ -186,7 +200,8 @@
       webllmEngine: null
     };
 
-    const DEMO_USERS_KEY = 'spiritClientDemoUsers';
+    const USER_STORE_KEY = 'spiritClientDemoUsers';
+    const CURRENT_USER_KEY = 'spiritCurrentUser';
 
     document.addEventListener('DOMContentLoaded', () => {
       if (state.token) {
@@ -251,14 +266,14 @@
 
     function readDemoUsers() {
       try {
-        return JSON.parse(localStorage.getItem(DEMO_USERS_KEY) || '{}');
+        return JSON.parse(localStorage.getItem(USER_STORE_KEY) || '{}');
       } catch {
         return {};
       }
     }
 
     function saveDemoUsers(users) {
-      localStorage.setItem(DEMO_USERS_KEY, JSON.stringify(users));
+      localStorage.setItem(USER_STORE_KEY, JSON.stringify(users));
     }
 
     function ensureDemoUserSeed() {
@@ -273,6 +288,10 @@
         saveDemoUsers(users);
       }
       return users;
+    }
+
+    function persistCurrentUser(user) {
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
     }
 
     function handleAuth(event) {
@@ -298,8 +317,10 @@
         if (users[username]) {
           return alert('That username is already registered locally on this device.');
         }
-        users[username] = { username, password, fullName, email };
+        const newUser = { username, password, fullName, email };
+        users[username] = newUser;
         saveDemoUsers(users);
+        persistCurrentUser(newUser);
         document.getElementById('welcome-banner').innerHTML = `Welcome aboard, ${fullName}! Your account is ready.`;
         document.getElementById('welcome-banner').style.display = 'block';
       } else {
@@ -307,6 +328,7 @@
         if (!storedUser || storedUser.password !== password) {
           return alert('Invalid credentials.');
         }
+        persistCurrentUser(storedUser);
       }
 
       const sessionToken = `client:${username}:${Date.now()}`;
@@ -332,6 +354,7 @@
       const tempPassword = `Spirit${Math.floor(1000 + Math.random() * 9000)}`;
       storedUser.password = tempPassword;
       saveDemoUsers(users);
+      persistCurrentUser(storedUser);
       alert(`A temporary password has been generated: ${tempPassword}`);
     }
 
